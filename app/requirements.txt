@@ -1,0 +1,6 @@
+pandas
+patsy
+numpy
+scipy
+statsmodels
+stargazer==0.0.7

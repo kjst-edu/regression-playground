@@ -126,6 +126,20 @@ def _require_columns(spec: Spec, wanted: list[str], columns) -> None:
         raise SpecError(f"{spec.file}: column(s) not found: {', '.join(missing)}")
 
 
+def sample_rows(
+    spec: Spec, df: pd.DataFrame, wanted: str | None
+) -> tuple[pd.DataFrame, Sample | None]:
+    """Rows of the sample `wanted` (None = first sample, or all rows if none declared)."""
+    if wanted is None:
+        if not spec.samples:
+            return df, None
+        wanted = spec.samples[0].key
+    sample = next((x for x in spec.samples if x.key == wanted), None)
+    if sample is None:
+        raise ValueError(f"unknown sample {wanted!r}")
+    return (df.query(sample.where) if sample.where else df), sample
+
+
 def check(spec: Spec, df: pd.DataFrame) -> None:
     """Cross-check the spec against the data."""
     for sample in spec.samples:

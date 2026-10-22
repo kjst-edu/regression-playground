@@ -4,18 +4,11 @@ from __future__ import annotations
 import pandas as pd
 from pandas.api import types as pdt
 
-from .spec import Spec
-from .state import first_sample
+from .spec import Spec, sample_rows
 
 
 def _rows(spec: Spec, df: pd.DataFrame, sample_key: str | None) -> pd.DataFrame:
-    wanted = sample_key if sample_key is not None else first_sample(spec)
-    if wanted is None:
-        return df
-    sample = next((x for x in spec.samples if x.key == wanted), None)
-    if sample is None:
-        raise ValueError(f"unknown sample {wanted!r}")
-    return df.query(sample.where) if sample.where else df
+    return sample_rows(spec, df, sample_key)[0]
 
 
 def _is_numeric(spec: Spec, name: str, df: pd.DataFrame) -> bool:

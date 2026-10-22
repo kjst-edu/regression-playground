@@ -12,8 +12,8 @@ import statsmodels.formula.api as smf
 from stargazer.stargazer import LineLocation, Stargazer
 from statsmodels.regression.linear_model import RegressionResultsWrapper
 
-from .spec import Spec
-from .state import Model, State, first_sample, formula
+from .spec import Spec, sample_rows
+from .state import Model, State, formula
 from .terms import Term, label, to_patsy
 
 
@@ -31,14 +31,11 @@ class FitError(Exception):
 
 
 def _sample_rows(model: Model, spec: Spec, df: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
-    key = model.sample if model.sample is not None else first_sample(spec)
-    if key is None:
-        return df, None
-    sample = next((s for s in spec.samples if s.key == key), None)
-    if sample is None:
-        raise FitError(f"unknown sample {key!r}")
-    rows = df.query(sample.where) if sample.where else df
-    return rows, sample.label
+    try:
+        rows, sample = sample_rows(spec, df, model.sample)
+    except ValueError as e:
+        raise FitError(str(e)) from e
+    return rows, sample.label if sample else None
 
 
 def _fit_one(st: State, i: int, spec: Spec, df: pd.DataFrame):

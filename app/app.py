@@ -41,6 +41,15 @@ state = reactive.value(initial_state(spec))
 # The term being built in the "+" dialog: {"model", "atom", "mode"} or None.
 draft = reactive.value(None)
 query_applied = [False]
+# Bumped on every state change and stamped on the rendered controls, so an
+# action sent from controls drawn before the last change (a double tap on ×)
+# is ignored instead of hitting another model or term.
+rev = [0]
+
+
+def commit(new) -> None:
+    rev[0] += 1
+    state.set(new)
 
 Y_TYPES = {None, "float", "int"}
 
@@ -81,9 +90,10 @@ $(document).on('shiny:connected', function () {
 });
 function pgSend(el, value) {
   var d = el.dataset;
+  var r = el.closest('[data-rev]');
   Shiny.setInputValue('action', {
     kind: d.action, model: d.model ?? null, term: d.term ?? null,
-    var: d.var ?? null, value: value
+    var: d.var ?? null, value: value, rev: r ? r.dataset.rev : null
   }, {priority: 'event'});
 }
 document.addEventListener('click', function (ev) {
@@ -152,6 +162,9 @@ body { background: #fff; }
 .pg-about dd { margin-bottom: 6px; overflow-wrap: anywhere; }
 .pg-about .form-group, .pg-about .shiny-input-container { width: 100%; }
 .pg-about select { min-height: 44px; }
+.modal-footer .btn, .modal .btn-close { min-height: 44px; min-width: 44px; }
+#shiny-notification-panel .shiny-notification { padding-right: 48px; min-height: 48px; }
+#shiny-notification-panel .shiny-notification-close { width: 44px; height: 44px; }
 .modal-body .shiny-input-radiogroup label { min-height: 44px; display: flex; align-items: center; gap: 8px; }
 """
         )
@@ -188,6 +201,7 @@ with ui.navset_tab(id="tab"):
                     btn("ln", "y_ln", cls="on" if st.y.log else "", disabled=not can_ln),
                     select,
                     class_="pg-yrow",
+                    data_rev=str(rev[0]),
                 ),
             )
 
@@ -257,7 +271,7 @@ with ui.navset_tab(id="tab"):
                         class_="pg-formulas",
                     )
                 )
-            return TagList(*out)
+            return tags.div(*out, data_rev=str(rev[0]))
 
     with ui.nav_panel("Table"):
 
@@ -449,35 +463,60 @@ def show_gear_modal():
     )
 
 
+MODEL_KINDS = {"sample", "dup", "del", "rm_term", "const_off", "const_on", "open_add"}
+
+
+def _index(raw, n: int) -> int | None:
+    """An index sent by the page, or None if it is malformed or out of range."""
+    try:
+        k = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return k if 0 <= k < n else None
+
+
 @reactive.effect
 @reactive.event(input.action)
 def _on_action():
     a = input.action()
     kind = a.get("kind")
-    i = int(a["model"]) if a.get("model") not in (None, "") else None
     st = state()
     d = draft()
+    # Actions from controls drawn before the last state change are stale.
+    if a.get("rev") not in (None, str(rev[0])):
+        return
+    i = _index(a.get("model"), len(st.models))
+    if kind in MODEL_KINDS and i is None:
+        return
+    if a.get("var") is not None and a["var"] not in spec.variables:
+        return
 
     if kind == "y_var":
         var = a["value"]
-        log = st.y.log and not spec.variables[var].logged
-        state.set(set_y(st, Atom(var, log=log)))
+        if var not in spec.variables:
+            return
+        log = st.y.log and "ln" in allowed(Atom(var), spec)
+        commit(set_y(st, Atom(var, log=log)))
     elif kind == "y_ln":
-        state.set(set_y(st, Atom(st.y.var, log=not st.y.log)))
+        if st.y.log or "ln" in allowed(Atom(st.y.var), spec):
+            commit(set_y(st, Atom(st.y.var, log=not st.y.log)))
     elif kind == "sample":
-        state.set(set_sample(st, i, a["value"]))
+        if a["value"] in {s.key for s in spec.samples}:
+            commit(set_sample(st, i, a["value"]))
     elif kind == "dup":
-        state.set(duplicate_model(st, i))
+        commit(duplicate_model(st, i))
     elif kind == "del":
-        state.set(remove_model(st, i))
+        commit(remove_model(st, i))
     elif kind == "add_model":
-        state.set(add_model(st))
+        commit(add_model(st))
     elif kind == "rm_term":
-        state.set(remove_term(st, i, int(a["term"])))
+        j = _index(a.get("term"), len(st.models[i].terms))
+        if j is not None:
+            commit(remove_term(st, i, j))
     elif kind == "const_off":
-        state.set(set_constant(st, i, False))
+        commit(set_constant(st, i, False))
     elif kind == "const_on":
-        state.set(set_constant(st, i, True))
+        commit(set_constant(st, i, True))
     elif kind == "gear":
         show_gear_modal()
     elif kind == "open_add":
@@ -486,7 +525,7 @@ def _on_action():
     elif kind == "cancel":
         draft.set(None)
         ui.modal_remove()
-    elif d is None:
+    elif d is None or d["model"] >= len(st.models):
         return
     elif kind == "pick":
         draft.set({**d, "atom": plain_atom(a["var"])})
@@ -498,9 +537,9 @@ def _on_action():
         draft.set({**d, "mode": "partner"})
     elif kind == "partner_back":
         draft.set({**d, "mode": "build"})
-    elif kind == "partner":
+    elif kind == "partner" and d["atom"] is not None:
         terms = interaction_terms(d["atom"], plain_atom(a["var"]))
-        state.set(add_terms(st, d["model"], terms))
+        commit(add_terms(st, d["model"], terms))
         draft.set(None)
         ui.modal_remove()
     elif kind == "info":
@@ -508,7 +547,7 @@ def _on_action():
     elif kind == "back":
         show_add_modal()
     elif kind == "add_term" and d["atom"] is not None:
-        state.set(add_terms(st, d["model"], [d["atom"]]))
+        commit(add_terms(st, d["model"], [d["atom"]]))
         draft.set(None)
         ui.modal_remove()
 
@@ -518,7 +557,7 @@ def _on_action():
 def _on_cov_type():
     ct = input.cov_type()
     if ct in COV_TYPES and ct != state().cov_type:
-        state.set(set_cov_type(state(), ct))
+        commit(set_cov_type(state(), ct))
 
 
 @reactive.effect
@@ -528,6 +567,6 @@ def _on_page_search():
         return
     query_applied[0] = True
     st, notices = state_from_query(input.page_search() or "", spec)
-    state.set(st)
+    commit(st)
     for n in notices:
         ui.notification_show(n, type="warning", duration=10)

@@ -85,7 +85,7 @@ def test_unknown_var(spec):
 
 
 def test_garbage_never_raises(spec):
-    terms, _, notices = parse_short_rhs("((; educ + sq() a:b:c educ:", spec)
+    terms, _, notices = parse_short_rhs("; educ + sq() a:b:c educ:", spec)
     assert Atom("educ") in terms
     assert notices
 

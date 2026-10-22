@@ -70,10 +70,10 @@ def test_unknown_column_is_error(tmp_path):
 
 
 def test_bad_where_is_error(tmp_path):
-    p = write(tmp_path, BASE + '[samples]\nbad = { label = "Bad", where = "nosuch == 1" }\n')
+    p = write(tmp_path, BASE + '[samples]\nbroken_sample = { label = "Broken", where = "nosuch == 1" }\n')
     spec = load_spec(p)
     df = load_data(spec, tmp_path)
-    with pytest.raises(SpecError, match="bad"):
+    with pytest.raises(SpecError, match="broken_sample"):
         check(spec, df)
 
 

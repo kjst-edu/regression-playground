@@ -106,3 +106,45 @@ def test_table_html_all_failed(spec, df):
     st = State(lwage, (Model((), constant=False),))
     html = regression_table_html(st, spec, fit_all(st, spec, df))
     assert "(1) no regressors" in html
+
+
+def test_collinear_dummy_and_complement(spec, df):
+    df["rural"] = 1 - df["urban"]
+    st = State(lwage, (Model((educ, Atom("urban"), Atom("rural"))), Model((educ,))))
+    bad, good = fit_all(st, spec, df)
+    assert bad.error == "perfect collinearity" and bad.result is None
+    assert good.error is None
+
+
+def test_collinear_constant_regressor_in_sample(spec, df):
+    [f] = fit_all(one(Model((educ, Atom("urban")), True, "urban")), spec, df)
+    assert f.error == "perfect collinearity"
+    # Without a constant the same regressor is fine.
+    [g] = fit_all(one(Model((educ, Atom("urban")), False, "urban")), spec, df)
+    assert g.error is None
+
+
+def row(html, label):
+    start = html.index(f">{label}</td>")
+    return html[start:html.index("</tr>", start)]
+
+
+def test_same_label_is_one_row(spec, df):
+    region = Atom("region", categorical=True)
+    st = State(lwage, (Model((educ, region)), Model((educ, region), constant=False)))
+    fitted = fit_all(st, spec, df)
+    html = regression_table_html(st, spec, fitted)
+    assert html.count(">C(region): 2</td>") == 1
+    cells = row(html, "C(region): 2").count("<sup>")
+    assert cells == 2  # a coefficient in both columns
+    assert f"{fitted[1].result.params['C(region)[2]']:.3f}" in row(html, "C(region): 2")
+
+
+def test_labels_escaped_once(spec, df):
+    df["sector"] = df["sector"].astype(str).replace("service", "service & <x>")
+    odd = replace(spec, samples=[Sample("all", "Urban & rural", None)])
+    st = one(Model((educ, Atom("sector", categorical=True))))
+    html = regression_table_html(st, odd, fit_all(st, odd, df))
+    assert "C(sector): service &amp; &lt;x&gt;" in html
+    assert "Urban &amp; rural" in html
+    assert "&amp;amp;" not in html and "<x>" not in html

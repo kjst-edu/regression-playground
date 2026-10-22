@@ -58,6 +58,10 @@ def _fit_one(st: State, i: int, spec: Spec, df: pd.DataFrame):
     n, k = len(keep), X.shape[1]
     if n <= k:
         raise FitError(f"too few observations (n={n}, k={k})")
+    # statsmodels uses a pseudo-inverse and would return arbitrary
+    # coefficients for a rank-deficient design.
+    if np.linalg.matrix_rank(X.to_numpy()[finite]) < k:
+        raise FitError("perfect collinearity")
     result = smf.ols(f, rows[rows.index.isin(keep)], missing="drop").fit(cov_type=st.cov_type)
     return result, int(result.nobs), sample_label
 
@@ -101,6 +105,22 @@ def param_labels(model: Model, result) -> dict[str, str]:
     return out
 
 
+_PER_COVARIATE = (
+    "cov_values",
+    "p_values",
+    "cov_std_err",
+    "conf_int_low_values",
+    "conf_int_high_values",
+)
+
+
+def _relabel(md: dict, labels: dict[str, str]) -> None:
+    """Rename one Stargazer model's covariates in place."""
+    md["cov_names"] = [labels.get(c, c) for c in md["cov_names"]]
+    for key in _PER_COVARIATE:
+        md[key] = md[key].rename(lambda c: labels.get(c, c))
+
+
 def regression_table_html(st: State, spec: Spec, fitted: list[Fitted]) -> str:
     ok = [f for f in fitted if f.result is not None]
     failed = [f for f in fitted if f.result is None]
@@ -110,15 +130,22 @@ def regression_table_html(st: State, spec: Spec, fitted: list[Fitted]) -> str:
         table.dependent_variable_name(html.escape(label(st.y)))
         table.show_model_numbers(False)
         table.custom_columns([f"({f.index + 1})" for f in ok])
-        labels: dict[str, str] = {}
+        # Key rows on the display label, not on statsmodels' names: patsy
+        # names a level C(region)[T.2] with a constant and C(region)[2]
+        # without one, and both must land in the same row. Stargazer's HTML
+        # renderer does not escape, so labels are escaped here, once.
         order: list[str] = []
-        for f in ok:
-            labels.update(param_labels(st.models[f.index], f.result))
-            order += [c for c in f.result.params.index if c not in order]
-        # Constant last, otherwise in the order the terms first appear.
-        order = [c for c in order if c != "Intercept"] + [c for c in order if c == "Intercept"]
-        table.covariate_order(order)
-        table.rename_covariates({c: html.escape(s) for c, s in labels.items()})
+        for f, md in zip(ok, table.model_data):
+            labels = {
+                c: html.escape(s)
+                for c, s in param_labels(st.models[f.index], f.result).items()
+            }
+            _relabel(md, labels)
+            order += [c for c in md["cov_names"] if c not in order]
+        constant = html.escape("Constant")
+        table.cov_names = [c for c in order if c != constant] + [
+            c for c in order if c == constant
+        ]
         table.show_degrees_of_freedom(False)
         table.show_n = False  # replaced by our own "N" line next to "Sample"
         # Without a constant the F statistic can be nan, which Stargazer

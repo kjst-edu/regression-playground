@@ -1,0 +1,25 @@
+[project]
+name = "regression-playground"
+version = "0.1.0"
+description = "Shinylive app for building OLS models on a phone"
+requires-python = "==3.12.*"
+dependencies = [
+    "shiny",
+    "shinylive==0.8.12",
+    "pandas",
+    "statsmodels==0.14.4",
+    "stargazer==0.0.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pyarrow",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["app"]
+testpaths = ["tests"]

@@ -148,3 +148,13 @@ def test_labels_escaped_once(spec, df):
     assert "C(sector): service &amp; &lt;x&gt;" in html
     assert "Urban &amp; rural" in html
     assert "&amp;amp;" not in html and "<x>" not in html
+
+
+def test_table_digits(spec, df):
+    st = State(lwage, (Model((educ,)),))
+    coef = fit_all(st, spec, df)[0].result.params["educ"]
+    html3 = regression_table_html(st, spec, fit_all(st, spec, df))
+    assert f"{coef:.3f}" in html3 and f"{coef:.4f}" not in html3
+    spec4 = replace(spec, digits=4)
+    html4 = regression_table_html(st, spec4, fit_all(st, spec4, df))
+    assert f"{coef:.4f}" in html4

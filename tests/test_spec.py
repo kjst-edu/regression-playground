@@ -99,3 +99,16 @@ def test_defaults_unknown_y_is_error(tmp_path):
     toml = BASE + '[defaults]\ny = "nope"\n'
     with pytest.raises(SpecError, match="nope"):
         load_spec(write(tmp_path, toml))
+
+
+def test_digits_default_and_value(tmp_path):
+    assert load_spec(write(tmp_path, BASE)).digits == 3
+    toml = "[app]\ndigits = 4\n" + BASE
+    assert load_spec(write(tmp_path, toml)).digits == 4
+
+
+@pytest.mark.parametrize("bad", ["0", "-1", "2.5", '"4"', "true"])
+def test_bad_digits_is_error(tmp_path, bad):
+    toml = f"[app]\ndigits = {bad}\n" + BASE
+    with pytest.raises(SpecError, match="digits"):
+        load_spec(write(tmp_path, toml))

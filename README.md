@@ -49,6 +49,7 @@ contact PyPI when it loads.
 [app]
 title    = "Wage regression playground"   # page title and heading
 subtitle = "Synthetic data, 200 workers"  # optional
+digits   = 3                              # optional: decimals in the regression table (default 3)
 
 [data]
 file = "data.csv"      # relative to the data directory; .parquet is read as parquet

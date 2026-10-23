@@ -41,6 +41,7 @@ class Sample:
 class Spec:
     title: str
     subtitle: str
+    digits: int
     file: str
     id: str | None
     source: dict[str, str]
@@ -89,9 +90,14 @@ def load_spec(toml_path: Path) -> Spec:
             f"[defaults] y: {defaults['y']!r} is not declared in [variables]"
         )
 
+    digits = app.get("digits", 3)
+    if isinstance(digits, bool) or not isinstance(digits, int) or digits < 1:
+        raise SpecError("[app] digits: must be a positive integer")
+
     return Spec(
         title=app.get("title", ""),
         subtitle=app.get("subtitle", ""),
+        digits=digits,
         file=data["file"],
         id=data.get("id"),
         source=dict(raw.get("source", {})),

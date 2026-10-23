@@ -126,6 +126,7 @@ def regression_table_html(st: State, spec: Spec, fitted: list[Fitted]) -> str:
         table = Stargazer([f.result for f in ok])
         table.dependent_variable_name(html.escape(label(st.y)))
         table.show_model_numbers(False)
+        table.significant_digits(spec.digits)
         table.custom_columns([f"({f.index + 1})" for f in ok])
         # Key rows on the display label, not on statsmodels' names: patsy
         # names a level C(region)[T.2] with a constant and C(region)[2]

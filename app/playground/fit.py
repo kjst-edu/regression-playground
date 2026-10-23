@@ -9,12 +9,13 @@ import numpy as np
 import pandas as pd
 import patsy
 import statsmodels.formula.api as smf
+from pandas.api import types as pdt
 from stargazer.stargazer import LineLocation, Stargazer
 from statsmodels.regression.linear_model import RegressionResultsWrapper
 
 from .spec import Spec, sample_rows
 from .state import Model, State, formula
-from .terms import Term, label, to_patsy
+from .terms import Atom, Interaction, Term, label, to_patsy
 
 
 @dataclass
@@ -38,28 +39,69 @@ def _sample_rows(model: Model, spec: Spec, df: pd.DataFrame) -> tuple[pd.DataFra
     return rows, sample.label if sample else None
 
 
+def _atoms(st: State, model: Model) -> list[Atom]:
+    """The dependent variable followed by every atom on the right-hand side."""
+    out = [st.y]
+    for t in model.terms:
+        out += [t.left, t.right] if isinstance(t, Interaction) else [t]
+    return out
+
+
+def _usable_rows(atoms: list[Atom], rows: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Masks over ``rows``: present in the data, and finite after transformation.
+
+    A row is present when every variable the formula uses is there (not NaN,
+    and finite for numeric variables). It is usable when, in addition, every
+    transformed value (ln, square) is finite.
+    """
+    present = np.ones(len(rows), dtype=bool)
+    usable = np.ones(len(rows), dtype=bool)
+    for a in atoms:
+        col = rows[a.var]
+        if a.categorical or not pdt.is_numeric_dtype(col.dtype):
+            ok = col.notna().to_numpy()
+            present &= ok
+            usable &= ok
+            continue
+        x = col.to_numpy(dtype="float64", na_value=np.nan)
+        present &= np.isfinite(x)
+        with np.errstate(all="ignore"):
+            if a.log:
+                x = np.log(x)
+            if a.square:
+                x = x**2
+        usable &= np.isfinite(x)
+    return present, usable
+
+
 def _fit_one(st: State, i: int, spec: Spec, df: pd.DataFrame):
     model = st.models[i]
     if not model.terms and not model.constant:
         raise FitError("no regressors")
     if st.y in model.terms:
         raise FitError("dependent variable appears on the right-hand side")
+    atoms = _atoms(st, model)
     rows, sample_label = _sample_rows(model, spec, df)
     f = formula(st, i)
-    # Evaluate once to find rows where y or any regressor is NaN or ±inf
-    # (e.g. the log of a non-positive value), then fit on the rest.
+    # Reduce to the rows the model can use (complete, and finite after ln or
+    # sq) before patsy builds the design: patsy takes categorical levels from
+    # every row it is given, so a level seen only in a dropped row would
+    # become an all-zero column and look like perfect collinearity.
+    _, usable = _usable_rows(atoms, rows)
+    used = rows[usable].copy()
+    for name in {a.var for a in atoms}:
+        if isinstance(used[name].dtype, pd.CategoricalDtype):
+            used[name] = used[name].cat.remove_unused_categories()
     with np.errstate(all="ignore"):
-        y, X = patsy.dmatrices(f, rows, NA_action="drop", return_type="dataframe")
-    finite = np.isfinite(y.to_numpy()).all(axis=1) & np.isfinite(X.to_numpy()).all(axis=1)
-    keep = y.index[finite]
-    n, k = len(keep), X.shape[1]
+        _, X = patsy.dmatrices(f, used, NA_action="raise", return_type="dataframe")
+    n, k = len(used), X.shape[1]
     if n <= k:
         raise FitError(f"too few observations (n={n}, k={k})")
     # statsmodels uses a pseudo-inverse and would return arbitrary
     # coefficients for a rank-deficient design.
-    if np.linalg.matrix_rank(X.to_numpy()[finite]) < k:
+    if np.linalg.matrix_rank(X.to_numpy()) < k:
         raise FitError("perfect collinearity")
-    result = smf.ols(f, rows[rows.index.isin(keep)], missing="drop").fit(cov_type=st.cov_type)
+    result = smf.ols(f, used, missing="raise").fit(cov_type=st.cov_type)
     return result, int(result.nobs), sample_label
 
 

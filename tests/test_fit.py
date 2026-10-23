@@ -158,3 +158,39 @@ def test_table_digits(spec, df):
     assert f"{coef:.3f}" in html3 and f"{coef:.4f}" not in html3
     st4 = set_digits(st, 4)
     assert f"{coef:.4f}" in regression_table_html(st4, spec, fitted)
+
+
+region_c = Atom("region", categorical=True)
+
+
+def test_level_only_in_rows_missing_a_regressor(spec, df):
+    df["exper"] = df["exper"].astype(float)
+    df.loc[df.region == 4, "exper"] = float("nan")
+    [f] = fit_all(one(Model((educ, exper, region_c))), spec, df)
+    assert f.error is None
+    assert f.n == (df.region != 4).sum()
+    assert not any("4" in c for c in f.result.params.index)
+
+
+def test_level_only_in_rows_with_nonfinite_y(spec, df):
+    df.loc[df.region == 4, "wage"] = 0.0
+    [f] = fit_all(one(Model((educ, region_c)), y=Atom("wage", log=True)), spec, df)
+    assert f.error is None
+    assert f.n == (df.region != 4).sum()
+
+
+def test_category_level_absent_from_sample(spec, df):
+    no_public = replace(spec, samples=[Sample("np", "No public", "sector != 'public'")])
+    assert "public" in df["sector"].cat.categories
+    [f] = fit_all(one(Model((educ, Atom("sector", categorical=True)))), no_public, df)
+    assert f.error is None
+    assert f.n == (df.sector != "public").sum()
+
+
+def test_collinear_still_fails_after_dropping_rows(spec, df):
+    df["exper"] = df["exper"].astype(float)
+    df.loc[df.region == 4, "exper"] = float("nan")
+    df["rural"] = 1 - df["urban"]
+    st = one(Model((exper, region_c, Atom("urban"), Atom("rural"))))
+    [f] = fit_all(st, spec, df)
+    assert f.error == "perfect collinearity"

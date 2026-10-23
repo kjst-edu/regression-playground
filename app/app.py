@@ -12,7 +12,14 @@ from shiny import reactive, render
 from shiny import ui as core_ui
 from shiny.express import input, ui
 
-from playground.describe import categorical_counts, format_stat, numeric_summary
+from playground.describe import (
+    categorical_counts,
+    format_stat,
+    ln_warning,
+    nonpositive_count,
+    numeric_summary,
+    y_ln_warnings,
+)
 from playground.fit import fit_all, regression_table_html
 from playground.query import state_from_query
 from playground.spec import load_data, load_spec
@@ -184,6 +191,9 @@ body { background: #fff; }
 .pg-var .pg-btn:first-child { flex: 1; text-align: left; }
 .pg-helpers { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 .pg-preview { margin: 8px 0; min-height: 1.5em; overflow-wrap: anywhere; }
+.pg-warn { margin: 8px 0; padding: 6px 10px; border-radius: 8px; background: #fff4e5;
+  color: #7a3300; font-size: .9rem; overflow-wrap: anywhere; }
+.pg-yrow + .pg-warn { margin: -8px 0 16px; }
 .pg-preview code { font-size: .85rem; }
 .pg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .table-box { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
@@ -237,6 +247,7 @@ with ui.navset_tab(id="tab"):
                     class_="pg-yrow",
                     data_rev=str(rev[0]),
                 ),
+                warn(*y_ln_warnings(st, spec, df)),
             )
 
         @render.ui
@@ -382,6 +393,19 @@ with ui.navset_tab(id="tab"):
                 return TagList(*parts)
 
 
+def warn(*texts):
+    return tags.div(*[tags.div(t) for t in texts], class_="pg-warn", role="status") if texts else None
+
+
+def ln_note(atom, i: int):
+    """Warning for ln of a variable with non-positive values in model i's sample."""
+    st = state()
+    if atom is None or not atom.log or i >= len(st.models):
+        return None
+    w = ln_warning(nonpositive_count(spec, df, atom.var, st.models[i].sample), atom.var)
+    return warn(w) if w else None
+
+
 # Dialog bodies are outputs held off the page and placed inside modals.
 with ui.hold():
 
@@ -437,6 +461,7 @@ with ui.hold():
             tags.div(*rows, class_="pg-vars"),
             helpers,
             preview,
+            ln_note(atom, d["model"]),
             tags.div(
                 btn("Cancel", "cancel"),
                 btn("Add", "add_term", cls="primary", disabled=atom is None),

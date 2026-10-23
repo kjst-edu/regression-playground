@@ -90,6 +90,16 @@ $(document).on('shiny:connected', function () {
   try { q = window.parent.location.search || ''; } catch (e) { q = ''; }
   Shiny.setInputValue('page_search', q);
 });
+// Crossing into the wide layout: the Table pane was hidden, so Shiny had
+// suspended its output. Visit the tabs once so it renders.
+try {
+  window.matchMedia('(min-width: 992px)').addEventListener('change', function (e) {
+    if (!e.matches) return;
+    var cur = document.querySelector('.nav-tabs .nav-link.active');
+    var t = document.querySelector('.nav-tabs .nav-link[data-value="Table"]');
+    if (t && cur && cur.dataset.value !== 'About') { t.click(); cur.click(); }
+  });
+} catch (e) {}
 function pgSend(el, value) {
   var d = el.dataset;
   var r = el.closest('[data-rev]');
@@ -116,6 +126,21 @@ document.addEventListener('change', function (ev) {
 html, body { overflow-x: hidden; }
 body { background: #fff; }
 .container, .container-fluid { max-width: 760px; padding-left: 12px; padding-right: 12px; }
+/* Wide screens: Model and Table side by side, About as the other tab. Narrow
+   screens keep three tabs. The table is rendered once; CSS only places it. */
+@media (min-width: 992px) {
+  .container, .container-fluid { max-width: 1240px; }
+  .tab-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .tab-content > .tab-pane[data-value="Model"],
+  .tab-content > .tab-pane[data-value="Table"] { display: block !important; opacity: 1 !important; }
+  .tab-content > .tab-pane[data-value="Table"] { position: sticky; top: 8px; }
+  .tab-content > .tab-pane[data-value="About"] { grid-column: 1 / -1; }
+  .tab-content:has(> .tab-pane[data-value="About"].active) > .tab-pane[data-value="Model"],
+  .tab-content:has(> .tab-pane[data-value="About"].active) > .tab-pane[data-value="Table"] { display: none !important; }
+  .nav-tabs .nav-item:has(> .nav-link[data-value="Table"]) { display: none; }
+  .navset-tab:not(:has(.tab-pane[data-value="About"].active)) .nav-link[data-value="Model"] {
+    color: #495057; background: #fff; border-color: #dee2e6 #dee2e6 #fff; }
+}
 .pg-header { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 8px; }
 .pg-header .pg-titles { flex: 1; min-width: 0; }
 .pg-header h1 { font-size: 1.35rem; margin: 0; }

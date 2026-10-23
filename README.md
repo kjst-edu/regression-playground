@@ -109,6 +109,12 @@ short syntax. The screen shows the equivalent patsy formula.
 Terms are joined with `+`. `ln` is refused on a column declared `logged`, and
 `ln`/`sq` on a categorical column.
 
+## Layout
+
+Below 992px the page has three tabs (Model, Table, About). From 992px up, Model
+and Table sit side by side, so the table updates as you change regressors;
+About stays a tab.
+
 ## Query parameters
 
 ```

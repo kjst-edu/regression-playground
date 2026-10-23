@@ -25,8 +25,12 @@ static site that runs entirely in the browser (Pyodide). No server is needed.
    ```
 
    `pack.py` checks `app.toml` against the data first (missing columns, a
-   `where` expression that does not parse, unknown names in `[defaults]`). On a
-   mistake it prints the reason, exits with status 1 and writes nothing.
+   `where` expression that does not parse, a malformed toml, a column that does
+   not fit its `type`, unknown names or bad terms in `[defaults]`). On a
+   mistake it prints a one-line reason, exits with status 1 and writes
+   nothing. The exported site carries only the declared variables and the `id`
+   column, in the same file name and format; other columns of your data file
+   are not published.
 
 4. Host the `site/` directory on any static web host (for example GitHub
    Pages). To try it locally:
@@ -107,13 +111,15 @@ Terms are joined with `+`. `ln` is refused on a column declared `logged`, and
 ## Query parameters
 
 ```
-?y=lwage&m1=educ&m2=educ%2Bexper%2Bsq(exper)&s2=urban
+?y=lwage&m1=educ&m2=educ%2Bexper%2Bsq(exper)&s2=urban&cov=HC1
 ```
 
 - `y`: dependent variable, `x` or `ln(x)`.
 - `m1`, `m2`, ...: right-hand side of each model, in short syntax.
 - `s1`, `s2`, ...: sample key of each model (a key from `[samples]`); a model
   without one uses the first sample.
+- `cov`: standard errors for all columns: `nonrobust`, `HC0`, `HC1`, `HC2` or
+  `HC3`. Other values are ignored.
 - A query replaces `[defaults]`. Parts that cannot be read are dropped and a
   short notice appears on screen.
 

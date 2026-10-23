@@ -174,6 +174,27 @@ def _relabel(md: dict, labels: dict[str, str]) -> None:
         md[key] = md[key].rename(lambda c: labels.get(c, c))
 
 
+def f_cell(result, constant: bool, digits: int) -> str:
+    """'12.345 (p = 0.012)' for the table's F statistic row, or '' when undefined.
+
+    statsmodels computes ``fvalue`` under the covariance the model was fitted
+    with (a Wald F for robust types). It tests the slopes against a model with
+    only a constant, so without a constant it is left blank, as it is when
+    there are no slopes (nan).
+    """
+    if not constant:
+        return ""
+    try:
+        f, p = float(result.fvalue), float(result.f_pvalue)
+    except Exception:
+        return ""
+    if not (np.isfinite(f) and np.isfinite(p)):
+        return ""
+    floor = 10.0**-digits
+    pv = f"p < {floor:.{digits}f}" if p < floor else f"p = {p:.{digits}f}"
+    return f"{f:.{digits}f} ({pv})"
+
+
 def regression_table_html(st: State, spec: Spec, fitted: list[Fitted]) -> str:
     ok = [f for f in fitted if f.result is not None]
     failed = [f for f in fitted if f.result is None]
@@ -202,9 +223,14 @@ def regression_table_html(st: State, spec: Spec, fitted: list[Fitted]) -> str:
         ]
         table.show_degrees_of_freedom(False)
         table.show_n = False  # replaced by our own "N" line next to "Sample"
-        # Without a constant the F statistic can be nan, which Stargazer
-        # prints as "nan***".
+        # Stargazer's own F row prints "nan***" when F is undefined; ours is
+        # blank then (see f_cell).
         table.show_f_statistic = False
+        table.add_line(
+            "F statistic",
+            [html.escape(f_cell(f.result, st.models[f.index].constant, st.digits)) for f in ok],
+            LineLocation.FOOTER_BOTTOM,
+        )
         samples = [html.escape(f.sample_label or "") for f in ok]
         table.add_line("Sample", samples, LineLocation.FOOTER_TOP)
         table.add_line("N", [str(f.n) for f in ok], LineLocation.FOOTER_TOP)

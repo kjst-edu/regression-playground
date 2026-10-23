@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import statsmodels.formula.api as smf
 
-from playground.fit import fit_all, param_labels, regression_table_html
+from playground.fit import f_cell, fit_all, param_labels, regression_table_html
 from playground.spec import Sample, load_data, load_spec
 from playground.state import Model, State, formula, set_cov_type, set_digits
 from playground.terms import Atom, Interaction
@@ -158,6 +158,53 @@ def test_table_digits(spec, df):
     assert f"{coef:.3f}" in html3 and f"{coef:.4f}" not in html3
     st4 = set_digits(st, 4)
     assert f"{coef:.4f}" in regression_table_html(st4, spec, fitted)
+
+
+@pytest.mark.parametrize("cov_type", ["nonrobust", "HC1"])
+def test_f_row_follows_cov_type(spec, df, cov_type):
+    st = State(lwage, (Model((educ, exper)),), cov_type)
+    [f] = fit_all(st, spec, df)
+    ref = smf.ols(formula(st, 0), df).fit(cov_type=cov_type)
+    assert f.result.fvalue == pytest.approx(ref.fvalue)
+    cell = f_cell(f.result, True, 3)
+    assert cell == f"{ref.fvalue:.3f} (p < 0.001)"
+    html = regression_table_html(st, spec, [f])
+    assert f"{ref.fvalue:.3f} (p &lt; 0.001)" in row(html, "F statistic")
+
+
+def test_f_differs_between_nonrobust_and_hc1(spec, df):
+    st = State(lwage, (Model((educ, exper)),))
+    [a] = fit_all(st, spec, df)
+    [b] = fit_all(set_cov_type(st, "HC1"), spec, df)
+    assert f_cell(a.result, True, 3) != f_cell(b.result, True, 3)
+
+
+def test_f_p_value_shown(spec, df):
+    st = State(lwage, (Model((Atom("urban"),)),))
+    [f] = fit_all(st, spec, df)
+    assert f.result.f_pvalue > 0.001
+    assert f_cell(f.result, True, 4) == f"{f.result.fvalue:.4f} (p = {f.result.f_pvalue:.4f})"
+
+
+def test_f_blank_without_constant_or_slopes(spec, df):
+    st = State(lwage, (Model((educ,), constant=False), Model((), constant=True), Model((educ,))))
+    fitted = fit_all(st, spec, df)
+    assert all(f.error is None for f in fitted)
+    assert f_cell(fitted[0].result, False, 3) == ""
+    assert f_cell(fitted[1].result, True, 3) == ""
+    html = regression_table_html(st, spec, fitted)
+    cells = row(html, "F statistic")
+    assert "nan" not in html.lower()
+    assert cells.count("<td></td>") == 2
+    assert f"{fitted[2].result.fvalue:.3f}" in cells
+
+
+def test_r2_and_resid_rows_kept(spec, df):
+    st = State(lwage, (Model((educ,)),))
+    html = regression_table_html(st, spec, fit_all(st, spec, df))
+    assert "R<sup>2</sup>" in html and "Adjusted R<sup>2</sup>" in html
+    assert "Residual Std. Error" in html
+    assert html.index("Residual Std. Error") < html.index(">F statistic<")
 
 
 region_c = Atom("region", categorical=True)

@@ -107,9 +107,18 @@ patsy formula.
 | `a:b` | `a:b` | interaction of two terms |
 | `-1` | `- 1` | drop the constant |
 
-Terms are joined with `+`. `ln` is refused on a column declared `logged`, and
+Terms are joined with `+`. `ln` is refused on a column declared `logged`,
 `ln`/`sq` on a categorical column, and `C` on a column declared
 `type = "float"`.
+
+## Regression table
+
+Below the coefficients the table shows the sample, N, R², adjusted R², the
+residual standard error and an "F statistic" row, `F (p = ...)`. The F
+statistic tests all slopes against a model with only a constant, under the
+standard errors chosen in Settings (with a robust type it is statsmodels' Wald
+F). It is left blank for a model without a constant or without slopes, where
+it is not defined.
 
 ## Layout
 

@@ -168,6 +168,7 @@ body { background: #fff; }
 #shiny-notification-panel .shiny-notification { padding-right: 48px; min-height: 48px; }
 #shiny-notification-panel .shiny-notification-close { width: 44px; height: 44px; }
 .modal-body .shiny-input-radiogroup label { min-height: 44px; display: flex; align-items: center; gap: 8px; }
+.modal-body .shiny-input-container-inline label, .modal-body .form-check-inline label { min-width: 44px; }
 """
         )
     ),

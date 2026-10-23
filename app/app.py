@@ -443,9 +443,18 @@ def fitted():
     return fit_all(state(), spec, df)
 
 
+def centered_modal(*args, **kwargs):
+    """ui.modal, centred vertically in the viewport (Bootstrap's modal-dialog-centered)."""
+    m = ui.modal(*args, **kwargs)
+    for child in m.children:
+        if "modal-dialog" in str(child.attrs.get("class", "")).split():
+            child.add_class("modal-dialog-centered")
+    return m
+
+
 def show_add_modal():
     ui.modal_show(
-        ui.modal(core_ui.output_ui("add_body"), title="Add a term", footer=None, easy_close=True)
+        centered_modal(core_ui.output_ui("add_body"), title="Add a term", footer=None, easy_close=True)
     )
 
 
@@ -458,7 +467,7 @@ def show_info_modal(var: str):
     if v.logged:
         items += [tags.dt("Logged"), tags.dd("yes (ln is not available)")]
     ui.modal_show(
-        ui.modal(
+        centered_modal(
             tags.dl(*items),
             tags.div(btn("Back", "back"), class_="pg-actions"),
             title=var,
@@ -470,7 +479,7 @@ def show_info_modal(var: str):
 
 def show_formula_modal(i: int):
     ui.modal_show(
-        ui.modal(
+        centered_modal(
             tags.p("patsy formula", class_="text-muted mb-2"),
             tags.pre(formula(state(), i), class_="pg-formula"),
             title=f"Model {i + 1}",
@@ -482,7 +491,7 @@ def show_formula_modal(i: int):
 
 def show_gear_modal():
     ui.modal_show(
-        ui.modal(
+        centered_modal(
             ui.input_radio_buttons(
                 "cov_type",
                 "Standard errors (all columns)",

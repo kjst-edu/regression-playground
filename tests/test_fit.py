@@ -194,3 +194,36 @@ def test_collinear_still_fails_after_dropping_rows(spec, df):
     st = one(Model((exper, region_c, Atom("urban"), Atom("rural"))))
     [f] = fit_all(st, spec, df)
     assert f.error == "perfect collinearity"
+
+
+def test_nonfinite_y_drops_are_noted(spec, df):
+    df.loc[df.index[:7], "wage"] = 0.0
+    st = State(Atom("wage", log=True), (Model((educ,)), Model((educ, exper))))
+    fitted = fit_all(st, spec, df)
+    assert [f.dropped for f in fitted] == [7, 7]
+    assert fitted[0].drop_reason == "ln of non-positive values"
+    html = regression_table_html(st, spec, fitted)
+    assert "(1) 7 rows dropped: ln of non-positive values" in html
+    assert "(2) 7 rows dropped: ln of non-positive values" in html
+
+
+def test_nonfinite_regressor_drop_noted_for_that_column_only(spec, df):
+    df.loc[df.index[:3], "exper"] = 0
+    zeros = int((df.exper == 0).sum())
+    ln_exper = Atom("exper", log=True)
+    st = State(lwage, (Model((educ,)), Model((educ, ln_exper))))
+    fitted = fit_all(st, spec, df)
+    assert [f.dropped for f in fitted] == [0, zeros]
+    assert fitted[1].n == 200 - zeros
+    html = regression_table_html(st, spec, fitted)
+    assert f"(2) {zeros} rows dropped: ln of non-positive values" in html
+    assert "(1) " not in html.split("Standard errors")[1]
+
+
+def test_missing_in_data_is_not_noted(spec, df):
+    df["exper"] = df["exper"].astype(float)
+    df.loc[df.index[:5], "exper"] = float("nan")
+    st = one(Model((educ, exper)))
+    [f] = fit_all(st, spec, df)
+    assert f.n == 195 and f.dropped == 0 and f.drop_reason is None
+    assert "dropped" not in regression_table_html(st, spec, [f])

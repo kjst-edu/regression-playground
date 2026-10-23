@@ -25,6 +25,10 @@ class Fitted:
     error: str | None
     n: int | None
     sample_label: str | None
+    # Rows present in the data but dropped because a transformed value (ln,
+    # square) is not finite; rows already missing in the data are not counted.
+    dropped: int = 0
+    drop_reason: str | None = None
 
 
 class FitError(Exception):
@@ -74,6 +78,13 @@ def _usable_rows(atoms: list[Atom], rows: pd.DataFrame) -> tuple[np.ndarray, np.
     return present, usable
 
 
+def _drop_reason(atoms: list[Atom]) -> str:
+    transformed = [a for a in atoms if a.log or a.square]
+    if transformed and all(a.log for a in transformed):
+        return "ln of non-positive values"
+    return "non-finite transformed values"
+
+
 def _fit_one(st: State, i: int, spec: Spec, df: pd.DataFrame):
     model = st.models[i]
     if not model.terms and not model.constant:
@@ -87,7 +98,8 @@ def _fit_one(st: State, i: int, spec: Spec, df: pd.DataFrame):
     # sq) before patsy builds the design: patsy takes categorical levels from
     # every row it is given, so a level seen only in a dropped row would
     # become an all-zero column and look like perfect collinearity.
-    _, usable = _usable_rows(atoms, rows)
+    present, usable = _usable_rows(atoms, rows)
+    dropped = int((present & ~usable).sum())
     used = rows[usable].copy()
     for name in {a.var for a in atoms}:
         if isinstance(used[name].dtype, pd.CategoricalDtype):
@@ -102,15 +114,16 @@ def _fit_one(st: State, i: int, spec: Spec, df: pd.DataFrame):
     if np.linalg.matrix_rank(X.to_numpy()) < k:
         raise FitError("perfect collinearity")
     result = smf.ols(f, used, missing="raise").fit(cov_type=st.cov_type)
-    return result, int(result.nobs), sample_label
+    reason = _drop_reason(atoms) if dropped else None
+    return result, int(result.nobs), sample_label, dropped, reason
 
 
 def fit_all(st: State, spec: Spec, df: pd.DataFrame) -> list[Fitted]:
     out = []
     for i in range(len(st.models)):
         try:
-            result, n, sample_label = _fit_one(st, i, spec, df)
-            out.append(Fitted(i, result, None, n, sample_label))
+            result, n, sample_label, dropped, reason = _fit_one(st, i, spec, df)
+            out.append(Fitted(i, result, None, n, sample_label, dropped, reason))
         except FitError as e:
             out.append(Fitted(i, None, str(e), None, None))
         except Exception as e:  # never let one model break the table
@@ -194,7 +207,14 @@ def regression_table_html(st: State, spec: Spec, fitted: list[Fitted]) -> str:
         samples = [html.escape(f.sample_label or "") for f in ok]
         table.add_line("Sample", samples, LineLocation.FOOTER_TOP)
         table.add_line("N", [str(f.n) for f in ok], LineLocation.FOOTER_TOP)
-        table.add_custom_notes([f"Standard errors: {st.cov_type}"])
+        notes = [f"Standard errors: {st.cov_type}"]
+        for f in ok:
+            if f.dropped:
+                rows = "row" if f.dropped == 1 else "rows"
+                notes.append(
+                    html.escape(f"({f.index + 1}) {f.dropped} {rows} dropped: {f.drop_reason}")
+                )
+        table.add_custom_notes(notes)
         parts.append(table.render_html())
     else:
         parts.append(f"<p>Standard errors: {html.escape(st.cov_type)}</p>")

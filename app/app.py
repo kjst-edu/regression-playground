@@ -150,6 +150,13 @@ body { background: #fff; }
 .pg-btn:disabled { opacity: .35; }
 .pg-btn.on { background: #0d6efd; border-color: #0d6efd; color: #fff; }
 .pg-btn.primary { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+/* Data (variables, terms) are blue; operations (ln, sq, C, × interact) are
+   outlined in orange with a monospace label. */
+.pg-btn.var { background: #e8f0fe; border-color: #b6ccf5; color: #0b3d91; }
+.pg-btn.var.on { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+.pg-btn.op { background: #fff; border-color: #c2410c; color: #9a3412;
+  font-family: ui-monospace, monospace; font-weight: 600; }
+.pg-btn.op.on { background: #9a3412; border-color: #9a3412; color: #fff; }
 .pg-btn.icon { padding: 0; background: transparent; border-color: transparent; font-size: 1.2rem; }
 .nav-tabs .nav-link { min-height: 44px; display: flex; align-items: center; }
 .pg-select { min-height: 44px; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px;
@@ -225,7 +232,7 @@ with ui.navset_tab(id="tab"):
             return TagList(
                 tags.div("Dependent variable", class_="pg-section-label"),
                 tags.div(
-                    btn("ln", "y_ln", cls="on" if st.y.log else "", disabled=not can_ln),
+                    btn("ln", "y_ln", cls="op on" if st.y.log else "op", disabled=not can_ln),
                     select,
                     class_="pg-yrow",
                     data_rev=str(rev[0]),
@@ -386,7 +393,7 @@ with ui.hold():
         atom = d["atom"]
         if d["mode"] == "partner":
             rows = [
-                tags.div(btn(n, "partner", var=n), class_="pg-var")
+                tags.div(btn(n, "partner", cls="var", var=n), class_="pg-var")
                 for n in spec.variables
                 if n != atom.var
             ]
@@ -397,7 +404,7 @@ with ui.hold():
             )
         rows = [
             tags.div(
-                btn(n, "pick", cls="on" if atom is not None and atom.var == n else "", var=n),
+                btn(n, "pick", cls="var on" if atom is not None and atom.var == n else "var", var=n),
                 btn("ⓘ", "info", cls="icon", title=f"About {n}", var=n),
                 class_="pg-var",
             )
@@ -407,7 +414,7 @@ with ui.hold():
         forced_c = atom is not None and spec.variables[atom.var].type == "category"
 
         def helper(text, op, active, ok):
-            return btn(text, "mod", cls="on" if active else "", disabled=not ok, value=op)
+            return btn(text, "mod", cls="op on" if active else "op", disabled=not ok, value=op)
 
         helpers = tags.div(
             helper("ln", "ln", atom is not None and atom.log, atom is not None and (atom.log or "ln" in can)),
@@ -418,7 +425,7 @@ with ui.hold():
                 atom is not None and atom.categorical,
                 atom is not None and not forced_c and (atom.categorical or "C" in can),
             ),
-            btn("× interact", "interact", disabled=atom is None or "interact" not in can),
+            btn("× interact", "interact", cls="op", disabled=atom is None or "interact" not in can),
             class_="pg-helpers",
         )
         preview = (

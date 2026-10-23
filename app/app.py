@@ -589,8 +589,10 @@ def _on_action():
         draft.set({**d, "atom": plain_atom(a["var"])})
     elif kind == "mod" and d["atom"] is not None:
         atom = d["atom"]
-        field = {"ln": "log", "sq": "square", "C": "categorical"}[a["value"]]
-        draft.set({**d, "atom": replace(atom, **{field: not getattr(atom, field)})})
+        op = a["value"]
+        field = {"ln": "log", "sq": "square", "C": "categorical"}.get(op)
+        if field is not None and (getattr(atom, field) or op in allowed(atom, spec)):
+            draft.set({**d, "atom": replace(atom, **{field: not getattr(atom, field)})})
     elif kind == "interact" and d["atom"] is not None:
         draft.set({**d, "mode": "partner"})
     elif kind == "partner_back":

@@ -100,3 +100,16 @@ def test_allowed(spec):
     a = allowed(Atom("region", categorical=True), spec)
     assert "ln" not in a and "sq" not in a
     assert allowed(Atom("educ"), spec) == {"ln", "sq", "C", "interact"}
+
+
+def test_no_C_for_float(spec):
+    assert spec.variables["wage"].type == "float"
+    assert "C" not in allowed(Atom("wage"), spec)
+    assert allowed(Atom("wage"), spec) == {"ln", "sq", "interact"}
+    assert "C" in allowed(Atom("region"), spec)  # int
+
+
+def test_reject_C_of_float(spec):
+    terms, _, notices = parse_short_rhs("C(wage) + educ", spec)
+    assert terms == [Atom("educ")]
+    assert len(notices) == 1 and "wage" in notices[0]

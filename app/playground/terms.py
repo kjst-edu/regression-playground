@@ -109,6 +109,8 @@ def _parse_atom(piece: str, spec: Spec) -> tuple[Atom | None, str | None]:
         return None, f"unknown variable {inner!r}"
     if v.type == "category":
         categorical = True
+    if func == "C" and v.type == "float":
+        return None, f"C is not available for float {inner!r}"
     if categorical and (log or square):
         return None, f"cannot apply ln or sq to categorical {inner!r}"
     if log and v.logged:
@@ -150,6 +152,7 @@ def allowed(atom: Atom, spec: Spec) -> set[str]:
             out.add("ln")
         if not atom.square:
             out.add("sq")
-        if not atom.log and not atom.square:
+        # A float column has (nearly) as many levels as rows: no dummies.
+        if not atom.log and not atom.square and not (v and v.type == "float"):
             out.add("C")
     return out

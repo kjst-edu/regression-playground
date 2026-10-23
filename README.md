@@ -108,7 +108,8 @@ patsy formula.
 | `-1` | `- 1` | drop the constant |
 
 Terms are joined with `+`. `ln` is refused on a column declared `logged`, and
-`ln`/`sq` on a categorical column.
+`ln`/`sq` on a categorical column, and `C` on a column declared
+`type = "float"`.
 
 ## Layout
 

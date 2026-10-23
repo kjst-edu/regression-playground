@@ -208,11 +208,21 @@ body { background: #fff; }
 .pg-about dd { margin-bottom: 6px; overflow-wrap: anywhere; }
 .pg-about .form-group, .pg-about .shiny-input-container { width: 100%; }
 .pg-about select { min-height: 44px; }
+.modal, .modal .modal-dialog { --bs-modal-margin: 8px; }
 .modal-footer .btn, .modal .btn-close { min-height: 44px; min-width: 44px; }
 #shiny-notification-panel .shiny-notification { padding-right: 48px; min-height: 48px; }
 #shiny-notification-panel .shiny-notification-close { width: 44px; height: 44px; }
-.modal-body .shiny-input-radiogroup label { min-height: 44px; display: flex; align-items: center; gap: 8px; }
-.modal-body .shiny-input-container-inline label, .modal-body .form-check-inline label { min-width: 44px; }
+.modal-body .shiny-input-radiogroup > label.control-label { margin-bottom: 4px; font-weight: 600; }
+.pg-seg .shiny-options-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.pg-seg .shiny-options-group label.radio-inline, .pg-seg .shiny-options-group label.radio-inline + label.radio-inline { position: relative; display: block; flex: 1 1 auto;
+  margin: 0; padding: 0; }
+.pg-seg .radio-inline input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.pg-seg .radio-inline span { display: flex; align-items: center; justify-content: center; min-height: 44px;
+  min-width: 44px; padding: 0 12px; line-height: 1.2; border: 1px solid #adb5bd; border-radius: 8px;
+  cursor: pointer; user-select: none; }
+.pg-seg .radio-inline input:checked + span { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+.pg-seg .radio-inline input:focus-visible + span { outline: 2px solid #0d6efd; outline-offset: 2px; }
+.pg-seg .shiny-input-container { margin-bottom: 12px; }
 """
         )
     ),
@@ -509,11 +519,11 @@ def fitted():
 
 
 def centered_modal(*args, **kwargs):
-    """ui.modal, centred vertically in the viewport (Bootstrap's modal-dialog-centered)."""
+    """ui.modal, centred vertically in the viewport (modal-dialog-centered), scrolling inside when taller than the viewport."""
     m = ui.modal(*args, **kwargs)
     for child in m.children:
         if "modal-dialog" in str(child.attrs.get("class", "")).split():
-            child.add_class("modal-dialog-centered")
+            child.add_class("modal-dialog-centered modal-dialog-scrollable")
     return m
 
 
@@ -557,18 +567,22 @@ def show_formula_modal(i: int):
 def show_gear_modal():
     ui.modal_show(
         centered_modal(
-            ui.input_radio_buttons(
-                "cov_type",
-                "Standard errors (all columns)",
-                choices={c: "nonrobust (usual OLS)" if c == "nonrobust" else c for c in COV_TYPES},
-                selected=state().cov_type,
-            ),
-            ui.input_radio_buttons(
-                "digits",
-                "Decimal places in the table",
-                choices={str(n): str(n) for n in DIGITS_CHOICES},
-                selected=str(state().digits),
-                inline=True,
+            tags.div(
+                ui.input_radio_buttons(
+                    "cov_type",
+                    "Standard errors (all columns)",
+                    choices={c: "usual (OLS)" if c == "nonrobust" else c for c in COV_TYPES},
+                    selected=state().cov_type,
+                    inline=True,
+                ),
+                ui.input_radio_buttons(
+                    "digits",
+                    "Decimal places in the table",
+                    choices={str(n): str(n) for n in DIGITS_CHOICES},
+                    selected=str(state().digits),
+                    inline=True,
+                ),
+                class_="pg-seg",
             ),
             title="Settings",
             footer=ui.modal_button("Close"),

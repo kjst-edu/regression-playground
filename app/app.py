@@ -32,6 +32,7 @@ from playground.state import (
     formula,
     initial_state,
     interaction_terms,
+    new_terms,
     remove_model,
     remove_term,
     set_constant,
@@ -47,7 +48,9 @@ spec = load_spec(HERE / "app.toml")
 df = load_data(spec, HERE)
 
 state = reactive.value(initial_state(spec))
-# The term being built in the "+" dialog: {"model", "atom", "mode"} or None.
+# The term being built in the "+" dialog: {"model", "atom", "mode", "partner"}
+# or None. mode is "build" or "partner"; partner is the chosen interaction
+# partner (an Atom) until Add is pressed.
 draft = reactive.value(None)
 query_applied = [False]
 # Bumped on every state change and stamped on the rendered controls, so an
@@ -393,6 +396,15 @@ with ui.navset_tab(id="tab"):
                 return TagList(*parts)
 
 
+def join_labels(terms):
+    """Term labels in bold, separated by commas."""
+    out = []
+    for k, t in enumerate(terms):
+        out += [", "] if k else []
+        out.append(tags.strong(label(t)))
+    return out
+
+
 def warn(*texts):
     return tags.div(*[tags.div(t) for t in texts], class_="pg-warn", role="status") if texts else None
 
@@ -416,15 +428,36 @@ with ui.hold():
             return None
         atom = d["atom"]
         if d["mode"] == "partner":
+            partner = d.get("partner")
             rows = [
-                tags.div(btn(n, "partner", cls="var", var=n), class_="pg-var")
+                tags.div(
+                    btn(n, "partner", cls="var on" if partner is not None and partner.var == n else "var", var=n),
+                    class_="pg-var",
+                )
                 for n in spec.variables
                 if n != atom.var
             ]
+            adds = []
+            if partner is not None:
+                adds = new_terms(state(), d["model"], interaction_terms(atom, partner))
+                preview = (
+                    tags.div("Adds ", *join_labels(adds), class_="pg-preview")
+                    if adds
+                    else tags.div(f"Already in model {d['model'] + 1}.", class_="pg-preview text-muted")
+                )
+            else:
+                preview = tags.div("Pick a partner.", class_="pg-preview text-muted")
             return TagList(
                 tags.p("Interact ", tags.strong(label(atom)), " with:"),
                 tags.div(*rows, class_="pg-vars"),
-                tags.div(btn("Back", "partner_back"), class_="pg-actions"),
+                preview,
+                ln_note(atom, d["model"]) if adds else None,
+                tags.div(
+                    btn("Back", "partner_back"),
+                    btn("Cancel", "cancel"),
+                    btn("Add", "add_interaction", cls="primary", disabled=not adds),
+                    class_="pg-actions",
+                ),
             )
         rows = [
             tags.div(
@@ -619,12 +652,13 @@ def _on_action():
         if field is not None and (getattr(atom, field) or op in allowed(atom, spec)):
             draft.set({**d, "atom": replace(atom, **{field: not getattr(atom, field)})})
     elif kind == "interact" and d["atom"] is not None:
-        draft.set({**d, "mode": "partner"})
+        draft.set({**d, "mode": "partner", "partner": None})
     elif kind == "partner_back":
-        draft.set({**d, "mode": "build"})
-    elif kind == "partner" and d["atom"] is not None:
-        terms = interaction_terms(d["atom"], plain_atom(a["var"]))
-        commit(add_terms(st, d["model"], terms))
+        draft.set({**d, "mode": "build", "partner": None})
+    elif kind == "partner" and d["atom"] is not None and a["var"] is not None:
+        draft.set({**d, "partner": plain_atom(a["var"])})
+    elif kind == "add_interaction" and d["atom"] is not None and d.get("partner") is not None:
+        commit(add_terms(st, d["model"], interaction_terms(d["atom"], d["partner"])))
         draft.set(None)
         ui.modal_remove()
     elif kind == "info":

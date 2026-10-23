@@ -12,6 +12,7 @@ from playground.state import (
     formula,
     initial_state,
     interaction_terms,
+    new_terms,
     remove_model,
     remove_term,
     set_constant,
@@ -62,6 +63,14 @@ def test_interaction_adds_three():
     # order-insensitive duplicate
     st = add_terms(st, 0, [Interaction(exper, female)])
     assert len(st.models[0].terms) == 5
+
+
+def test_new_terms_preview():
+    st = base()  # model 0 has educ
+    assert new_terms(st, 0, interaction_terms(educ, female)) == [female, Interaction(educ, female)]
+    st = add_terms(st, 0, interaction_terms(educ, female))
+    assert new_terms(st, 0, interaction_terms(female, educ)) == []
+    assert new_terms(st, 0, [exper, exper]) == [exper]
 
 
 def test_interaction_with_itself():

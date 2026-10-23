@@ -64,12 +64,20 @@ def _same(a: Term, b: Term) -> bool:
     )
 
 
-def add_terms(st: State, i: int, terms: list[Term]) -> State:
+def new_terms(st: State, i: int, terms: list[Term]) -> list[Term]:
+    """The terms that add_terms would append to model i, in order."""
     kept = list(st.models[i].terms)
+    out: list[Term] = []
     for t in terms:
         if not any(_same(t, k) for k in kept):
             kept.append(t)
-    return _with_model(st, i, replace(st.models[i], terms=tuple(kept)))
+            out.append(t)
+    return out
+
+
+def add_terms(st: State, i: int, terms: list[Term]) -> State:
+    m = st.models[i]
+    return _with_model(st, i, replace(m, terms=m.terms + tuple(new_terms(st, i, terms))))
 
 
 def remove_term(st: State, i: int, j: int) -> State:

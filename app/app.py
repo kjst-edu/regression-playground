@@ -170,9 +170,8 @@ body { background: #fff; }
 .pg-chip .pg-btn { background: transparent; border: none; border-radius: 22px; }
 .pg-chip.off { background: transparent; border: 1px dashed #aaa; padding-left: 0; color: #666; }
 .pg-add-model { width: 100%; margin-bottom: 16px; }
-.pg-formulas { font-family: ui-monospace, monospace; font-size: .85rem; background: #f6f6f6;
-  border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; }
-.pg-formulas div { margin: 2px 0; }
+.pg-formula { font-family: ui-monospace, monospace; font-size: .95rem; background: #f6f6f6;
+  border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; white-space: pre-wrap; margin: 0; }
 .pg-vars { display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow-y: auto; }
 .pg-var { display: flex; gap: 4px; }
 .pg-var .pg-btn:first-child { flex: 1; text-align: left; }
@@ -241,6 +240,7 @@ with ui.navset_tab(id="tab"):
                 rows = [
                     tags.div(
                         tags.h3(f"Model {i + 1}"),
+                        btn("ƒ", "show_formula", cls="icon", title=f"Formula of model {i + 1}", model=i),
                         btn("⧉", "dup", cls="icon", title=f"Duplicate model {i + 1}", model=i),
                         btn("×", "del", cls="icon", title=f"Remove model {i + 1}", model=i),
                         class_="pg-frame-head",
@@ -292,13 +292,6 @@ with ui.navset_tab(id="tab"):
                 rows.append(tags.div(*chips, class_="pg-chips"))
                 out.append(tags.div(*rows, class_="pg-frame"))
             out.append(btn("＋ Add model", "add_model", cls="pg-add-model"))
-            if st.models:
-                out.append(
-                    tags.div(
-                        *[tags.div(f"({i + 1}) {formula(st, i)}") for i in range(len(st.models))],
-                        class_="pg-formulas",
-                    )
-                )
             return tags.div(*out, data_rev=str(rev[0]))
 
     with ui.nav_panel("Table"):
@@ -475,6 +468,18 @@ def show_info_modal(var: str):
     )
 
 
+def show_formula_modal(i: int):
+    ui.modal_show(
+        ui.modal(
+            tags.p("patsy formula", class_="text-muted mb-2"),
+            tags.pre(formula(state(), i), class_="pg-formula"),
+            title=f"Model {i + 1}",
+            footer=ui.modal_button("Close"),
+            easy_close=True,
+        )
+    )
+
+
 def show_gear_modal():
     ui.modal_show(
         ui.modal(
@@ -498,7 +503,7 @@ def show_gear_modal():
     )
 
 
-MODEL_KINDS = {"sample", "dup", "del", "rm_term", "const_off", "const_on", "open_add"}
+MODEL_KINDS = {"sample", "show_formula", "dup", "del", "rm_term", "const_off", "const_on", "open_add"}
 
 
 def _index(raw, n: int) -> int | None:
@@ -538,6 +543,8 @@ def _on_action():
     elif kind == "sample":
         if a["value"] in {s.key for s in spec.samples}:
             commit(set_sample(st, i, a["value"]))
+    elif kind == "show_formula":
+        show_formula_modal(i)
     elif kind == "dup":
         commit(duplicate_model(st, i))
     elif kind == "del":

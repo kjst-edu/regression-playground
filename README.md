@@ -94,7 +94,8 @@ Notes:
 ## Short syntax and patsy
 
 Models in `[defaults] models` and in the `m1`, `m2`, ... query parameters use a
-short syntax. The screen shows the equivalent patsy formula.
+short syntax. On the Model tab, the ƒ button in a model's header opens its
+patsy formula.
 
 | Short syntax | patsy | Meaning |
 | --- | --- | --- |

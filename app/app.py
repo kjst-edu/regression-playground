@@ -12,7 +12,7 @@ from shiny import reactive, render
 from shiny import ui as core_ui
 from shiny.express import input, ui
 
-from playground.describe import categorical_counts, numeric_summary
+from playground.describe import categorical_counts, format_stat, numeric_summary
 from playground.fit import fit_all, regression_table_html
 from playground.query import state_from_query
 from playground.spec import load_data, load_spec
@@ -368,7 +368,7 @@ with ui.navset_tab(id="tab"):
                 if len(num):
                     parts.append(
                         tags.div(
-                            HTML(num.to_html(float_format=lambda x: f"{x:.{max(4, state().digits)}g}", classes="table table-sm")),
+                            HTML(num.to_html(float_format=lambda x: format_stat(x, state().digits), classes="table table-sm")),
                             class_="table-box",
                         )
                     )

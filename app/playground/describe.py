@@ -7,6 +7,13 @@ from pandas.api import types as pdt
 from .spec import Spec, sample_rows
 
 
+def format_stat(x: float, digits: int) -> str:
+    """Fixed point with thousands separators, ``digits`` decimals (as in the table)."""
+    if pd.isna(x):
+        return ""
+    return f"{x:,.{digits}f}"
+
+
 def _rows(spec: Spec, df: pd.DataFrame, sample_key: str | None) -> pd.DataFrame:
     return sample_rows(spec, df, sample_key)[0]
 

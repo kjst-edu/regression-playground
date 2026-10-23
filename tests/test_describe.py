@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from playground.describe import categorical_counts, numeric_summary
+from playground.describe import categorical_counts, format_stat, numeric_summary
 from playground.spec import load_data, load_spec
 
 EXAMPLE = Path(__file__).resolve().parent.parent / "example"
@@ -60,3 +60,26 @@ def test_undeclared_type_follows_dtype(spec, df):
     sp = replace(spec, variables=variables)
     assert "educ" in numeric_summary(sp, df, "all").index
     assert "female" in set(categorical_counts(sp, df, "all")["Variable"])
+
+
+@pytest.mark.parametrize(
+    "x, digits, want",
+    [
+        (24230.4567, 3, "24,230.457"),
+        (24230.4567, 2, "24,230.46"),
+        (1234567.0, 2, "1,234,567.00"),
+        (0.000123, 4, "0.0001"),
+        (-1500.5, 2, "-1,500.50"),
+        (float("nan"), 3, ""),
+    ],
+)
+def test_format_stat(x, digits, want):
+    assert format_stat(x, digits) == want
+
+
+def test_summary_html_has_no_scientific_notation(spec, df):
+    df["wage"] = df["wage"] * 1000
+    out = numeric_summary(spec, df, "all")
+    html = out.to_html(float_format=lambda x: format_stat(x, 3))
+    assert "e+" not in html
+    assert f"{df['wage'].max():,.3f}" in html

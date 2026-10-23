@@ -49,7 +49,7 @@ contact PyPI when it loads.
 [app]
 title    = "Wage regression playground"   # page title and heading
 subtitle = "Synthetic data, 200 workers"  # optional
-digits   = 3                              # optional: decimals in the regression table (default 3)
+digits   = 3                              # optional: initial decimals in the regression table (default 3; students can change it in Settings)
 
 [data]
 file = "data.csv"      # relative to the data directory; .parquet is read as parquet
@@ -112,7 +112,7 @@ Terms are joined with `+`. `ln` is refused on a column declared `logged`, and
 ## Query parameters
 
 ```
-?y=lwage&m1=educ&m2=educ%2Bexper%2Bsq(exper)&s2=urban&cov=HC1
+?y=lwage&m1=educ&m2=educ%2Bexper%2Bsq(exper)&s2=urban&cov=HC1&digits=4
 ```
 
 - `y`: dependent variable, `x` or `ln(x)`.
@@ -121,6 +121,8 @@ Terms are joined with `+`. `ln` is refused on a column declared `logged`, and
   without one uses the first sample.
 - `cov`: standard errors for all columns: `nonrobust`, `HC0`, `HC1`, `HC2` or
   `HC3`. Other values are ignored.
+- `digits`: decimal places in the regression table, 2 to 6. Other values are
+  ignored with a notice. Needs `y` or `m1` as well, like `cov`.
 - A query replaces `[defaults]`. Parts that cannot be read are dropped and a
   short notice appears on screen.
 

@@ -55,3 +55,11 @@ def test_query_bad_y_falls_back(spec):
     st, notices = state_from_query("?y=nosuch&m1=educ", spec)
     assert st.y == initial_state(spec).y
     assert len(notices) == 2
+
+
+def test_digits_param(spec):
+    st, notices = state_from_query("?y=lwage&digits=5", spec)
+    assert st.digits == 5 and notices == []
+    for bad in ("7", "x", "2.5"):
+        st, notices = state_from_query(f"?y=lwage&digits={bad}", spec)
+        assert st.digits == 3 and any("digits" in n for n in notices)

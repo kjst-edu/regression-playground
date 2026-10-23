@@ -5,7 +5,7 @@ import re
 from urllib.parse import parse_qs
 
 from .spec import Spec
-from .state import COV_TYPES, Model, State, first_sample, initial_state
+from .state import COV_TYPES, DIGITS_CHOICES, Model, State, first_sample, initial_state
 from .terms import Atom, parse_short_rhs
 
 
@@ -54,4 +54,14 @@ def state_from_query(search: str, spec: Spec) -> tuple[State, list[str]]:
     cov = base.cov_type
     if "cov" in q and q["cov"][0] in COV_TYPES:
         cov = q["cov"][0]
-    return State(y, models, cov), notices
+    digits = base.digits
+    if "digits" in q:
+        try:
+            n = int(q["digits"][0])
+        except ValueError:
+            n = None
+        if n in DIGITS_CHOICES:
+            digits = n
+        else:
+            notices.append(f"Ignored digits={q['digits'][0]!r}: use 2 to 6")
+    return State(y, models, cov, digits), notices

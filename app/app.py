@@ -18,6 +18,7 @@ from playground.query import state_from_query
 from playground.spec import load_data, load_spec
 from playground.state import (
     COV_TYPES,
+    DIGITS_CHOICES,
     add_model,
     add_terms,
     duplicate_model,
@@ -28,6 +29,7 @@ from playground.state import (
     remove_term,
     set_constant,
     set_cov_type,
+    set_digits,
     set_sample,
     set_y,
 )
@@ -340,7 +342,7 @@ with ui.navset_tab(id="tab"):
                 if len(num):
                     parts.append(
                         tags.div(
-                            HTML(num.to_html(float_format=lambda x: f"{x:.4g}", classes="table table-sm")),
+                            HTML(num.to_html(float_format=lambda x: f"{x:.{max(4, state().digits)}g}", classes="table table-sm")),
                             class_="table-box",
                         )
                     )
@@ -456,6 +458,13 @@ def show_gear_modal():
                 choices={c: "nonrobust (usual OLS)" if c == "nonrobust" else c for c in COV_TYPES},
                 selected=state().cov_type,
             ),
+            ui.input_radio_buttons(
+                "digits",
+                "Decimal places in the table",
+                choices={str(n): str(n) for n in DIGITS_CHOICES},
+                selected=str(state().digits),
+                inline=True,
+            ),
             title="Settings",
             footer=ui.modal_button("Close"),
             easy_close=True,
@@ -558,6 +567,17 @@ def _on_cov_type():
     ct = input.cov_type()
     if ct in COV_TYPES and ct != state().cov_type:
         commit(set_cov_type(state(), ct))
+
+
+@reactive.effect
+@reactive.event(input.digits)
+def _on_digits():
+    try:
+        n = int(input.digits())
+    except (TypeError, ValueError):
+        return
+    if n in DIGITS_CHOICES and n != state().digits:
+        commit(set_digits(state(), n))
 
 
 @reactive.effect

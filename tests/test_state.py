@@ -91,3 +91,13 @@ def test_initial_state_from_defaults(spec):
     assert formula(st, 1) == "lwage ~ educ + exper + I(exper**2)"
     assert st.models[0].sample == "all"
     assert st.cov_type == "HC1"
+
+
+def test_set_digits_and_initial(spec):
+    from dataclasses import replace
+    from playground.state import set_digits
+
+    st = initial_state(spec)
+    assert st.digits == 3
+    assert set_digits(st, 5).digits == 5 and st.digits == 3
+    assert initial_state(replace(spec, digits=4)).digits == 4

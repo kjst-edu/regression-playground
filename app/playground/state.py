@@ -10,6 +10,7 @@ from .spec import Spec
 from .terms import Atom, Interaction, Term, parse_short_rhs, to_patsy
 
 COV_TYPES = ("nonrobust", "HC0", "HC1", "HC2", "HC3")
+DIGITS_CHOICES = (2, 3, 4, 5, 6)
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class State:
     y: Atom
     models: tuple[Model, ...]
     cov_type: str = "nonrobust"
+    digits: int = 3
 
 
 def _with_model(st: State, i: int, model: Model) -> State:
@@ -87,6 +89,10 @@ def set_cov_type(st: State, ct: str) -> State:
     return replace(st, cov_type=ct)
 
 
+def set_digits(st: State, n: int) -> State:
+    return replace(st, digits=n)
+
+
 def interaction_terms(a: Atom, b: Atom) -> list[Term]:
     if a == b:
         return [a]
@@ -118,4 +124,4 @@ def initial_state(spec: Spec) -> State:
         models.append(Model(tuple(terms), constant, sample))
     y_terms, _, _ = parse_short_rhs(d["y"], spec)
     y = y_terms[0] if y_terms and isinstance(y_terms[0], Atom) else Atom(d["y"])
-    return State(y, tuple(models), d.get("cov_type", "nonrobust"))
+    return State(y, tuple(models), d.get("cov_type", "nonrobust"), spec.digits)

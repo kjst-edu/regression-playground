@@ -6,7 +6,7 @@ import statsmodels.formula.api as smf
 
 from playground.fit import fit_all, param_labels, regression_table_html
 from playground.spec import Sample, load_data, load_spec
-from playground.state import Model, State, formula, set_cov_type
+from playground.state import Model, State, formula, set_cov_type, set_digits
 from playground.terms import Atom, Interaction
 
 EXAMPLE = Path(__file__).resolve().parent.parent / "example"
@@ -152,9 +152,9 @@ def test_labels_escaped_once(spec, df):
 
 def test_table_digits(spec, df):
     st = State(lwage, (Model((educ,)),))
-    coef = fit_all(st, spec, df)[0].result.params["educ"]
-    html3 = regression_table_html(st, spec, fit_all(st, spec, df))
+    fitted = fit_all(st, spec, df)
+    coef = fitted[0].result.params["educ"]
+    html3 = regression_table_html(st, spec, fitted)
     assert f"{coef:.3f}" in html3 and f"{coef:.4f}" not in html3
-    spec4 = replace(spec, digits=4)
-    html4 = regression_table_html(st, spec4, fit_all(st, spec4, df))
-    assert f"{coef:.4f}" in html4
+    st4 = set_digits(st, 4)
+    assert f"{coef:.4f}" in regression_table_html(st4, spec, fitted)

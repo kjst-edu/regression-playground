@@ -89,9 +89,10 @@ def _fit_one(st: State, i: int, spec: Spec, df: pd.DataFrame):
     model = st.models[i]
     if not model.terms and not model.constant:
         raise FitError("no regressors")
-    if st.y in model.terms:
-        raise FitError("dependent variable appears on the right-hand side")
     atoms = _atoms(st, model)
+    # Any form of y on the right (ln y, y², inside an interaction) is refused.
+    if any(a.var == st.y.var for a in atoms[1:]):
+        raise FitError("dependent variable appears on the right-hand side")
     rows, sample_label = _sample_rows(model, spec, df)
     f = formula(st, i)
     # Reduce to the rows the model can use (complete, and finite after ln or

@@ -227,3 +227,25 @@ def test_missing_in_data_is_not_noted(spec, df):
     [f] = fit_all(st, spec, df)
     assert f.n == 195 and f.dropped == 0 and f.drop_reason is None
     assert "dropped" not in regression_table_html(st, spec, [f])
+
+
+@pytest.mark.parametrize(
+    "rhs",
+    [
+        Atom("wage"),
+        Atom("wage", log=True),
+        Atom("wage", square=True),
+        Atom("wage", log=True, square=True),
+        Interaction(educ, Atom("wage")),
+        Interaction(Atom("wage", log=True), female),
+    ],
+)
+def test_y_in_any_form_on_the_right(spec, df, rhs):
+    [f] = fit_all(one(Model((educ, rhs)), y=Atom("wage", log=True)), spec, df)
+    assert f.error == "dependent variable appears on the right-hand side"
+    assert f.result is None
+
+
+def test_y_on_the_right_in_interaction(spec, df):
+    [f] = fit_all(one(Model((Interaction(educ, lwage),))), spec, df)
+    assert "dependent variable" in f.error

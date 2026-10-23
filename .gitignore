@@ -4,3 +4,6 @@ __pycache__/
 .superpowers/
 app/app.toml
 app/data.*
+_build/
+site/
+_out/

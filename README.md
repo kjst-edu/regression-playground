@@ -73,7 +73,7 @@ all   = { label = "All workers" }                      # no where = all rows
 urban = { label = "Urban only", where = "urban == 1" } # DataFrame.query expression
 
 [defaults]             # the initial screen when there is no query
-y        = "lwage"
+y        = "lwage"                               # required
 models   = ["educ", "educ + exper + sq(exper)"]  # short syntax, see below
 samples  = ["all", "urban"]                      # one key per model; missing = first sample
 cov_type = "HC1"                                 # nonrobust | HC0 | HC1 | HC2 | HC3

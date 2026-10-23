@@ -22,6 +22,8 @@ file = "data.csv"
 label = "A"
 [variables.b]
 label = "B"
+[defaults]
+y = "b"
 """
 
 
@@ -96,8 +98,14 @@ def test_parquet_by_extension(tmp_path):
 
 
 def test_defaults_unknown_y_is_error(tmp_path):
-    toml = BASE + '[defaults]\ny = "nope"\n'
+    toml = BASE.replace('y = "b"', 'y = "nope"')
     with pytest.raises(SpecError, match="nope"):
+        load_spec(write(tmp_path, toml))
+
+
+def test_defaults_y_is_required(tmp_path):
+    toml = BASE.replace('y = "b"\n', "")
+    with pytest.raises(SpecError, match=r"^\[defaults\] y: required$"):
         load_spec(write(tmp_path, toml))
 
 

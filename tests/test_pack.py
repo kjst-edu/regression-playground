@@ -33,6 +33,14 @@ def test_valid(tmp_path):
     assert list(df.columns) == ["a", "b", "id"]
 
 
+def test_defaults_y_required(tmp_path, capsys):
+    toml = TOML.replace('y = "b"\n', "")
+    with pytest.raises(SpecError, match=r"^\[defaults\] y: required$"):
+        pack.validate(make(tmp_path, toml=toml))
+    assert pack.main([str(tmp_path), str(tmp_path / "out")]) == 1
+    assert capsys.readouterr().err == "error: [defaults] y: required\n"
+
+
 def test_malformed_toml(tmp_path):
     with pytest.raises(SpecError, match="app.toml"):
         pack.validate(make(tmp_path, toml="[data\nfile ="))

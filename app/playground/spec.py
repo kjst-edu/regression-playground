@@ -85,7 +85,9 @@ def load_spec(toml_path: Path) -> Spec:
         samples.append(Sample(key=key, label=entry["label"], where=entry.get("where")))
 
     defaults = raw.get("defaults", {})
-    if "y" in defaults and defaults["y"] not in variables:
+    if "y" not in defaults:
+        raise SpecError("[defaults] y: required")
+    if not isinstance(defaults["y"], str) or defaults["y"] not in variables:
         raise SpecError(
             f"[defaults] y: {defaults['y']!r} is not declared in [variables]"
         )

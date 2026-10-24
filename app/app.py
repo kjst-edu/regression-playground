@@ -134,6 +134,10 @@ document.addEventListener('change', function (ev) {
         HTML(
             """
 html, body { overflow-x: hidden; }
+/* Opening a modal must not move the page: Bootstrap hides the body scrollbar and
+   pads the body to compensate. Reserve the scrollbar's space instead. */
+html { scrollbar-gutter: stable; }
+body.modal-open { padding-right: 0 !important; }
 body { background: #fff; }
 .container, .container-fluid { max-width: 760px; padding-left: 12px; padding-right: 12px; }
 /* Wide screens: Model and Table side by side, About as the other tab. Narrow

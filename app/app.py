@@ -172,6 +172,7 @@ body { background: #fff; }
   font-family: ui-monospace, monospace; font-weight: 600; }
 .pg-btn.op.on { background: #9a3412; border-color: #9a3412; color: #fff; }
 .pg-btn.icon { padding: 0; background: transparent; border-color: transparent; font-size: 1.2rem; }
+.pg-btn.icon.code { font-family: ui-monospace, monospace; font-size: .9rem; font-weight: 600; line-height: 1; }
 .nav-tabs .nav-link { min-height: 44px; display: flex; align-items: center; }
 .pg-select { min-height: 44px; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px;
   padding: 0 8px; background: #fff; max-width: 100%; }
@@ -275,7 +276,7 @@ with ui.navset_tab(id="tab"):
                 rows = [
                     tags.div(
                         tags.h3(f"Model {i + 1}"),
-                        btn("ƒ", "show_formula", cls="icon", title=f"Formula of model {i + 1}", model=i),
+                        btn("</>", "show_formula", cls="icon code",title=f"Formula of model {i + 1}", model=i),
                         btn("⧉", "dup", cls="icon", title=f"Duplicate model {i + 1}", model=i),
                         btn("×", "del", cls="icon", title=f"Remove model {i + 1}", model=i),
                         class_="pg-frame-head",

@@ -120,3 +120,12 @@ def test_bad_digits_is_error(tmp_path, bad):
     toml = f"[app]\ndigits = {bad}\n" + BASE
     with pytest.raises(SpecError, match="digits"):
         load_spec(write(tmp_path, toml))
+
+
+def test_download_info():
+    from types import SimpleNamespace
+
+    from playground.spec import download_info
+
+    assert download_info(SimpleNamespace(file="data.csv")) == ("data.csv", "text/csv")
+    assert download_info(SimpleNamespace(file="sub/d.parquet"))[0] == "d.parquet"

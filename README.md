@@ -91,6 +91,13 @@ Notes:
 - Columns not declared in `[variables]` are not loaded.
 - Parquet loads more slowly on a phone; prefer CSV unless the data are large.
 
+## About tab
+
+The About tab shows the source, the variables and descriptive statistics. A
+"Download data" button gives students exactly the data the app uses (the
+declared variables and the `id` column), in the file name and format of
+`[data] file`, so they can reproduce the regressions and the patsy formulas.
+
 ## Short syntax and patsy
 
 Models in `[defaults] models` and in the `m1`, `m2`, ... query parameters use a

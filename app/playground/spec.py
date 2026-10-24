@@ -128,6 +128,13 @@ def load_data(spec: Spec, base: Path) -> pd.DataFrame:
     return df
 
 
+def download_info(spec: Spec) -> tuple[str, str]:
+    """File name and media type for the data download (the toml's name and format)."""
+    name = Path(spec.file).name
+    kind = "application/vnd.apache.parquet" if name.endswith(".parquet") else "text/csv"
+    return name, kind
+
+
 def _require_columns(spec: Spec, wanted: list[str], columns) -> None:
     missing = [c for c in wanted if c not in columns]
     if missing:

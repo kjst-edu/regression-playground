@@ -22,7 +22,7 @@ from playground.describe import (
 )
 from playground.fit import fit_all, regression_table_html
 from playground.query import state_from_query
-from playground.spec import load_data, load_spec
+from playground.spec import download_info, load_data, load_spec
 from playground.state import (
     COV_TYPES,
     DIGITS_CHOICES,
@@ -213,6 +213,7 @@ body { background: #fff; }
 .pg-about dd { margin-bottom: 6px; overflow-wrap: anywhere; }
 .pg-about .form-group, .pg-about .shiny-input-container { width: 100%; }
 .pg-about select { min-height: 44px; }
+.pg-about .shiny-download-link { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; margin: 4px 0 12px; }
 .modal, .modal .modal-dialog { --bs-modal-margin: 8px; }
 .modal-footer .btn, .modal .btn-close { min-height: 44px; min-width: 44px; }
 #shiny-notification-panel .shiny-notification { padding-right: 48px; min-height: 48px; }
@@ -379,6 +380,15 @@ with ui.navset_tab(id="tab"):
                         for v in spec.variables.values()
                     ]
                     return tags.table(tags.thead(head), tags.tbody(*rows), class_="table table-sm")
+
+            @render.download(
+                filename=download_info(spec)[0],
+                media_type=download_info(spec)[1],
+                label="Download data",
+            )
+            def download_data():
+                # app.py sits next to the packed data file: declared columns + id only.
+                yield (HERE / spec.file).read_bytes()
 
             ui.h4("Descriptive statistics")
             if spec.samples:
